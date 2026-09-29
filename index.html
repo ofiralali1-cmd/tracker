@@ -15,11 +15,12 @@ button{font:inherit;border:0;border-radius:10px;padding:10px 14px;background:var
 button.s{background:var(--bg);color:var(--tx);border:1px solid var(--bd);padding:8px 12px;min-height:40px}
 button.x{background:none;color:var(--r);padding:8px}
 .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}details summary{padding:6px 0}
 .tot{text-align:center;padding:10px 4px}.tot b{display:block;font-size:20px}
 .pb{position:relative;height:12px;background:var(--bd);border-radius:6px;overflow:hidden;margin:6px 0 2px}.pb i{display:block;height:100%;border-radius:6px}.pb u{position:absolute;top:0;bottom:0;left:76.9%;width:2px;background:#fff8}
 .bar{height:6px;background:var(--bd);border-radius:3px;margin-top:6px;overflow:hidden}.bar i{display:block;height:100%;background:var(--ac)}
 nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--bd);display:flex;padding-bottom:env(safe-area-inset-bottom,0px)}
-nav button{flex:1;background:none;color:var(--mu);border-radius:0;font-size:12px;min-height:58px}nav button.on{color:var(--ac);font-weight:700}
+nav button{flex:1;background:none;color:var(--mu);border-radius:0;font-size:11px;padding:6px 2px;min-height:58px}nav button.on{color:var(--ac);font-weight:700}
 nav span{display:block;font-size:22px}
 .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.cal div{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:8px;background:var(--card);border:1px solid var(--bd);font-size:14px}
 .cal .h{background:none;border:0;color:var(--mu);font-size:12px;aspect-ratio:auto}
@@ -38,11 +39,11 @@ const today=()=>{const d=new Date();return key(d.getFullYear(),d.getMonth(),d.ge
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const num=v=>parseFloat(v)||0,r1=n=>Math.round(n*10)/10;
 let S={};try{S=JSON.parse(localStorage.getItem(K))||{}}catch(e){}
-S=Object.assign({foods:[],mult:{},target:{},rec:[],done:{},one:[],log:[],marks:{},weights:[],goal:null,day:today()},S);
+S=Object.assign({foods:[],mult:{},target:{},rec:[],done:{},one:[],log:[],runs:[],wk:[],wdone:{},marks:{},weights:[],goal:null,day:today()},S);
 const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
-function roll(){if(S.day!==today()){S.day=today();S.mult={};S.log=[];S.done={};S.one=S.one.filter(t=>!t.d);save();return true}}
+function roll(){if(S.day!==today()){S.day=today();S.mult={};S.log=[];S.done={};S.wdone={};S.one=S.one.filter(t=>!t.d);save();return true}}
 let page=0,editF=null,view='month',now=new Date(),cy=now.getFullYear(),cm=now.getMonth(),sel=today();
-const tabs=[['🍎','Nutrition'],['✅','Tasks'],['📅','Tracker'],['⚖️','Weight']];
+const tabs=[['🍎','Nutrition'],['✅','Tasks'],['📅','Tracker'],['⚖️','Weight'],['🏃','Running'],['🏋️','Workout']];
 const MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 function nutrition(){
@@ -109,7 +110,34 @@ function editW(id){const x=S.weights.find(a=>a.id===id);$('#wd').value=x.d;$('#w
 function exp(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));a.download='tracker-backup.json';a.click()}
 function imp(f){if(!f)return;const r=new FileReader();r.onload=()=>{try{S=Object.assign(S,JSON.parse(r.result));roll();save();draw();alert('Imported')}catch(e){alert('Invalid file')}};r.readAsText(f)}
 
-function draw(){roll();const y=scrollY;$('#app').innerHTML=[nutrition,tasks,tracker,weight][page]();
+
+const pT=v=>{const p=String(v).trim().split(':').map(Number);if(!String(v).trim()||p.some(isNaN))return 0;return p.length===1?p[0]*60:p.length===2?p[0]*60+p[1]:p[0]*3600+p[1]*60+p[2]};
+const fT=x=>{x=Math.round(x);const h=Math.floor(x/3600),m=Math.floor(x%3600/60),c=x%60;return (h?h+':'+pad(m):m)+':'+pad(c)};
+let editR=null,ask=null;
+const dbtn=(id,l)=>`<button class="${ask===id?'':'x'}" style="${ask===id?'background:var(--r);color:#000':''}" onclick="del2('${id}','${l}')">${ask===id?'Sure?':'✕'}</button>`;
+function del2(id,l){if(ask!==id){ask=id;draw();setTimeout(()=>{if(ask===id){ask=null;draw()}},4000);return}S[l]=S[l].filter(x=>x.id!==id);ask=null;save();draw()}
+function running(){
+ const R=[...S.runs].sort((a,b)=>a.d<b.d?1:a.d>b.d?-1:0),e=S.runs.find(x=>x.id===editR)||{};
+ const tk=R.reduce((a,r)=>a+r.km,0),ts=R.reduce((a,r)=>a+r.sec,0),now=new Date(today());
+ const wk=R.filter(r=>(now-new Date(r.d))/864e5<7).reduce((a,r)=>a+r.km,0);
+ const ps=R.filter(r=>r.km>0&&r.sec>0).map(r=>r.sec/r.km),best=ps.length?Math.min(...ps):0;
+ return `<h1>Running</h1>
+ ${R.length?`<div class="grid2"><div class="card tot"><b>${r1(tk)} km</b><span class="mu">Total · ${R.length} runs</span></div><div class="card tot"><b>${r1(wk)} km</b><span class="mu">Last 7 days</span></div><div class="card tot"><b>${tk&&ts?fT(ts/tk):'-'}</b><span class="mu">Avg pace /km</span></div><div class="card tot"><b>${best?fT(best):'-'}</b><span class="mu">Best pace /km</span></div></div>`:''}
+ <h2>${e.id?'Edit run':'Add run'}</h2><div class="card"><input id="rd" type="date" value="${e.d||today()}"><div class="grid2" style="margin-top:8px"><input id="rk" type="number" inputmode="decimal" step="0.01" placeholder="Distance (km)" value="${e.km??''}"><input id="rt" placeholder="Time (mm:ss)" value="${e.sec?fT(e.sec):''}"></div><div class="row" style="margin-top:8px"><button onclick="saveR()">${e.id?'Save':'Add run'}</button>${e.id?'<button class="s" onclick="editR=null;draw()">Cancel</button>':''}</div></div>
+ <h2>History</h2>${R.map(r=>`<div class="card row"><div class="sp"><b>${r1(r.km)} km</b> <span class="mu">${r.d}</span><div class="mu">${fT(r.sec)}${r.km&&r.sec?' · '+fT(r.sec/r.km)+' /km · '+r1(r.km/r.sec*3600)+' km/h':''}</div></div><button class="s" onclick="editR='${r.id}';draw();scrollTo(0,0)">Edit</button>${dbtn(r.id,'runs')}</div>`).join('')||'<p class="mu">No runs yet.</p>'}`}
+function saveR(){const km=num($('#rk').value),sec=pT($('#rt').value),d=$('#rd').value;if(!km||!sec||!d)return;const o={d,km,sec};if(editR)Object.assign(S.runs.find(x=>x.id===editR),o);else S.runs.push({id:uid(),...o});editR=null;save();draw()}
+function workout(){
+ const W=[...S.wk].sort((a,b)=>(a.g||'').localeCompare(b.g||'')),dn=W.filter(x=>S.wdone[x.id]).length;let g=null,h='';
+ W.forEach(x=>{const xg=x.g||'';if(xg!==g){g=xg;h+=`<h2>${esc(xg)||'Exercises'}</h2>`}
+  h+=`<div class="card"><div class="row"><input type="checkbox" ${S.wdone[x.id]?'checked':''} onchange="S.wdone['${x.id}']=this.checked;save();draw()"><input value="${esc(x.n)}" onchange="wSet('${x.id}','n',this.value)">${dbtn(x.id,'wk')}</div>
+  <div class="grid3" style="margin-top:8px"><div><span class="mu">Sets</span><input type="number" inputmode="decimal" value="${x.s||''}" onchange="wSet('${x.id}','s',this.value)"></div><div><span class="mu">Reps</span><input type="number" inputmode="decimal" value="${x.r||''}" onchange="wSet('${x.id}','r',this.value)"></div><div><span class="mu">Weight (kg)</span><input type="number" inputmode="decimal" step="0.5" value="${x.kg||''}" onchange="wSet('${x.id}','kg',this.value)"></div></div>
+  <input style="margin-top:8px" placeholder="Group / day (optional)" value="${esc(xg)}" onchange="wSet('${x.id}','g',this.value)">
+  <details><summary class="mu">Progress history (${(x.h||[]).length})</summary><div class="mu">${(x.h||[]).slice(-8).reverse().map(k=>`${k.d}: ${k.s}×${k.r} @ ${k.kg} kg`).join('<br>')}</div></details></div>`});
+ return `<h1>Workout</h1>${W.length?`<p class="mu">${dn}/${W.length} done today · checkboxes reset every day</p>`:''}${h||'<p class="mu">No exercises yet. Add your first one below.</p>'}
+ <h2>Add exercise</h2><div class="card"><input id="xn" placeholder="Exercise name"><input id="xg" style="margin-top:8px" placeholder="Group / day (optional, e.g. Chest day)"><div class="grid3" style="margin-top:8px"><input id="xs" type="number" inputmode="decimal" placeholder="Sets"><input id="xr" type="number" inputmode="decimal" placeholder="Reps"><input id="xk" type="number" inputmode="decimal" step="0.5" placeholder="kg"></div><div class="row" style="margin-top:8px"><button onclick="saveX()">Add</button></div></div>`}
+function saveX(){const n=$('#xn').value.trim();if(!n)return;const x={id:uid(),n,g:$('#xg').value.trim(),s:num($('#xs').value),r:num($('#xr').value),kg:num($('#xk').value)};x.h=[{d:today(),s:x.s,r:x.r,kg:x.kg}];S.wk.push(x);save();draw()}
+function wSet(id,f,v){const x=S.wk.find(a=>a.id===id);if(!x)return;if(f==='n'||f==='g'){if(f==='n'&&!v.trim()){draw();return}x[f]=v.trim()}else{x[f]=num(v);x.h=x.h||[];const sn={d:today(),s:x.s,r:x.r,kg:x.kg},l=x.h[x.h.length-1];if(l&&l.d===sn.d)x.h[x.h.length-1]=sn;else x.h.push(sn);x.h=x.h.slice(-40)}save();draw()}
+function draw(){roll();const y=scrollY;$('#app').innerHTML=[nutrition,tasks,tracker,weight,running,workout][page]();
  $('#nav').innerHTML=tabs.map((t,i)=>`<button class="${i===page?'on':''}" onclick="page=${i};draw();scrollTo(0,0)"><span>${t[0]}</span>${t[1]}</button>`).join('');scrollTo(0,y)}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.day!==today()){sel=today();draw()}});
 draw();
