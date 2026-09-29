@@ -41,6 +41,7 @@ const num=v=>parseFloat(v)||0,r1=n=>Math.round(n*10)/10;
 let S={};try{S=JSON.parse(localStorage.getItem(K))||{}}catch(e){}
 S=Object.assign({foods:[],mult:{},target:{},rec:[],done:{},one:[],log:[],runs:[],wk:[],wdone:{},marks:{},weights:[],goal:null,day:today()},S);
 const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
+S.wk.forEach(x=>{if(!x.a){x.a={r:x.r||0,kg:x.kg||0};x.b={r:x.r||0,kg:x.kg||0}}x.h=(x.h||[]).map(k=>k.a?k:{d:k.d,a:[k.r||0,k.kg||0],b:[k.r||0,k.kg||0]})});
 function roll(){if(S.day!==today()){S.day=today();S.mult={};S.log=[];S.done={};S.wdone={};S.one=S.one.filter(t=>!t.d);save();return true}}
 let page=0,editF=null,view='month',now=new Date(),cy=now.getFullYear(),cm=now.getMonth(),sel=today();
 const tabs=[['🍎','Nutrition'],['✅','Tasks'],['📅','Tracker'],['⚖️','Weight'],['🏃','Running'],['🏋️','Workout']];
@@ -127,16 +128,17 @@ function running(){
  <h2>History</h2>${R.map(r=>`<div class="card row"><div class="sp"><b>${r1(r.km)} km</b> <span class="mu">${r.d}</span><div class="mu">${fT(r.sec)}${r.km&&r.sec?' · '+fT(r.sec/r.km)+' /km · '+r1(r.km/r.sec*3600)+' km/h':''}</div></div><button class="s" onclick="editR='${r.id}';draw();scrollTo(0,0)">Edit</button>${dbtn(r.id,'runs')}</div>`).join('')||'<p class="mu">No runs yet.</p>'}`}
 function saveR(){const km=num($('#rk').value),sec=pT($('#rt').value),d=$('#rd').value;if(!km||!sec||!d)return;const o={d,km,sec};if(editR)Object.assign(S.runs.find(x=>x.id===editR),o);else S.runs.push({id:uid(),...o});editR=null;save();draw()}
 function workout(){
- const W=[...S.wk].sort((a,b)=>(a.g||'').localeCompare(b.g||'')),dn=W.filter(x=>S.wdone[x.id]).length;let g=null,h='';
- W.forEach(x=>{const xg=x.g||'';if(xg!==g){g=xg;h+=`<h2>${esc(xg)||'Exercises'}</h2>`}
-  h+=`<div class="card"><div class="row"><input type="checkbox" ${S.wdone[x.id]?'checked':''} onchange="S.wdone['${x.id}']=this.checked;save();draw()"><input value="${esc(x.n)}" onchange="wSet('${x.id}','n',this.value)">${dbtn(x.id,'wk')}</div>
-  <div class="grid3" style="margin-top:8px"><div><span class="mu">Sets</span><input type="number" inputmode="decimal" value="${x.s||''}" onchange="wSet('${x.id}','s',this.value)"></div><div><span class="mu">Reps</span><input type="number" inputmode="decimal" value="${x.r||''}" onchange="wSet('${x.id}','r',this.value)"></div><div><span class="mu">Weight (kg)</span><input type="number" inputmode="decimal" step="0.5" value="${x.kg||''}" onchange="wSet('${x.id}','kg',this.value)"></div></div>
-  <input style="margin-top:8px" placeholder="Group / day (optional)" value="${esc(xg)}" onchange="wSet('${x.id}','g',this.value)">
-  <details><summary class="mu">Progress history (${(x.h||[]).length})</summary><div class="mu">${(x.h||[]).slice(-8).reverse().map(k=>`${k.d}: ${k.s}×${k.r} @ ${k.kg} kg`).join('<br>')}</div></details></div>`});
- return `<h1>Workout</h1>${W.length?`<p class="mu">${dn}/${W.length} done today · checkboxes reset every day</p>`:''}${h||'<p class="mu">No exercises yet. Add your first one below.</p>'}
- <h2>Add exercise</h2><div class="card"><input id="xn" placeholder="Exercise name"><input id="xg" style="margin-top:8px" placeholder="Group / day (optional, e.g. Chest day)"><div class="grid3" style="margin-top:8px"><input id="xs" type="number" inputmode="decimal" placeholder="Sets"><input id="xr" type="number" inputmode="decimal" placeholder="Reps"><input id="xk" type="number" inputmode="decimal" step="0.5" placeholder="kg"></div><div class="row" style="margin-top:8px"><button onclick="saveX()">Add</button></div></div>`}
-function saveX(){const n=$('#xn').value.trim();if(!n)return;const x={id:uid(),n,g:$('#xg').value.trim(),s:num($('#xs').value),r:num($('#xr').value),kg:num($('#xk').value)};x.h=[{d:today(),s:x.s,r:x.r,kg:x.kg}];S.wk.push(x);save();draw()}
-function wSet(id,f,v){const x=S.wk.find(a=>a.id===id);if(!x)return;if(f==='n'||f==='g'){if(f==='n'&&!v.trim()){draw();return}x[f]=v.trim()}else{x[f]=num(v);x.h=x.h||[];const sn={d:today(),s:x.s,r:x.r,kg:x.kg},l=x.h[x.h.length-1];if(l&&l.d===sn.d)x.h[x.h.length-1]=sn;else x.h.push(sn);x.h=x.h.slice(-40)}save();draw()}
+ const W=S.wk,dn=W.filter(x=>S.wdone[x.id]).length;
+ const set=(x,k,n)=>`<div style="margin-top:10px"><b class="mu">Set ${n}</b><div class="grid2" style="margin-top:4px"><div><span class="mu">Reps</span><input type="number" inputmode="decimal" value="${x[k].r||''}" onchange="wSet('${x.id}','${k}','r',this.value)"></div><div><span class="mu">Weight (kg)</span><input type="number" inputmode="decimal" step="0.5" value="${x[k].kg||''}" onchange="wSet('${x.id}','${k}','kg',this.value)"></div></div></div>`;
+ return `<h1>Workout</h1>${W.length?`<p class="mu">${dn}/${W.length} done today · checkboxes reset every day</p>`:''}
+ ${W.map(x=>`<div class="card"><div class="row"><input type="checkbox" ${S.wdone[x.id]?'checked':''} onchange="S.wdone['${x.id}']=this.checked;save();draw()"><input value="${esc(x.n)}" onchange="wName('${x.id}',this.value)"></div>${set(x,'a',1)}${set(x,'b',2)}
+ <details><summary class="mu">Progress history (${x.h.length})</summary><div class="mu">${x.h.slice(-8).reverse().map(k=>`${k.d}<br>&nbsp;Set 1: ${k.a[0]} × ${k.a[1]} kg<br>&nbsp;Set 2: ${k.b[0]} × ${k.b[1]} kg`).join('<br>')}</div></details>
+ <button class="s" style="width:100%;margin-top:8px;${ask===x.id?'background:var(--r);color:#000':'color:var(--r)'}" onclick="del2('${x.id}','wk')">${ask===x.id?'Tap again to delete':'Delete exercise'}</button></div>`).join('')||'<p class="mu">No exercises yet. Add your first one below.</p>'}
+ <h2>Add exercise</h2><div class="card"><input id="xn" placeholder="Exercise name"><div class="grid2" style="margin-top:8px"><input id="xr1" type="number" inputmode="decimal" placeholder="Set 1 reps"><input id="xk1" type="number" inputmode="decimal" step="0.5" placeholder="Set 1 kg"><input id="xr2" type="number" inputmode="decimal" placeholder="Set 2 reps"><input id="xk2" type="number" inputmode="decimal" step="0.5" placeholder="Set 2 kg"></div><p class="mu">Leave Set 2 empty to copy Set 1.</p><button onclick="saveX()">Add</button></div>`}
+const snap=x=>({d:today(),a:[x.a.r,x.a.kg],b:[x.b.r,x.b.kg]});
+function saveX(){const n=$('#xn').value.trim();if(!n)return;const a={r:num($('#xr1').value),kg:num($('#xk1').value)},e2=!$('#xr2').value&&!$('#xk2').value,b=e2?{...a}:{r:num($('#xr2').value),kg:num($('#xk2').value)};const x={id:uid(),n,a,b};x.h=[snap(x)];S.wk.push(x);save();draw()}
+function wName(id,v){const x=S.wk.find(a=>a.id===id);if(x&&v.trim())x.n=v.trim();save();draw()}
+function wSet(id,k,f,v){const x=S.wk.find(a=>a.id===id);if(!x)return;x[k][f]=num(v);const sn=snap(x),l=x.h[x.h.length-1];if(l&&l.d===sn.d)x.h[x.h.length-1]=sn;else x.h.push(sn);x.h=x.h.slice(-40);save();draw()}
 function draw(){roll();const y=scrollY;$('#app').innerHTML=[nutrition,tasks,tracker,weight,running,workout][page]();
  $('#nav').innerHTML=tabs.map((t,i)=>`<button class="${i===page?'on':''}" onclick="page=${i};draw();scrollTo(0,0)"><span>${t[0]}</span>${t[1]}</button>`).join('');scrollTo(0,y)}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.day!==today()){sel=today();draw()}});
